@@ -149,6 +149,7 @@ table.report-tbl td.total{font-weight:700;color:var(--green)}
 .pbar{flex:1;height:3px;background:var(--border);border-radius:2px}
 .pfill{height:100%;background:var(--accent);border-radius:2px;transition:width .4s}
 
+@keyframes pulse-btn{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
 .hidden{display:none!important}
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -194,7 +195,7 @@ table.report-tbl td.total{font-weight:700;color:var(--green)}
   <div class="main">
     <div class="toolbar">
       <div class="tb-title" id="tbTitle">Select or add a client</div>
-      <div id="tbActions" class="hidden" style="display:flex;gap:8px;flex-wrap:wrap">
+      <div id="tbActions" class="hidden" style="gap:8px;flex-wrap:wrap">
         <button class="btn" onclick="switchTab('upload')" id="tabUpload">
           <i class="ti ti-upload"></i> Upload DPR
         </button>
@@ -361,7 +362,7 @@ function selClient(id){
   activeId = id;
   const c = gc(id); if(!c) return;
   document.getElementById('tbTitle').innerHTML = `<span>${c.name}</span>`;
-  document.getElementById('tbActions').style.display = 'flex';
+  document.getElementById('tbActions').classList.remove('hidden');
   document.getElementById('viewEmpty').classList.add('hidden');
   renderClients();
   if(c.analysed && c.reportData){ switchTab('report'); renderReport(c.reportData); }
@@ -390,7 +391,7 @@ function delClient(id){
   if(activeId===id){
     activeId = clients.length ? clients[0].id : null;
     if(activeId) selClient(activeId);
-    else { document.getElementById('tbActions').style.display='none'; document.getElementById('viewEmpty').classList.remove('hidden'); document.getElementById('viewUpload').classList.add('hidden'); document.getElementById('viewReport').classList.add('hidden'); }
+    else { document.getElementById('tbActions').classList.add('hidden'); document.getElementById('viewEmpty').classList.remove('hidden'); document.getElementById('viewUpload').classList.add('hidden'); document.getElementById('viewReport').classList.add('hidden'); }
   }
   renderClients();
 }
@@ -416,6 +417,11 @@ function handleFile(file){
   c.reportData = null;
   save(); renderClients(); renderFileChip(c);
   setStatus('PDF loaded — click "Analyse DPR" to start', 0);
+  // Highlight the Analyse button so user knows to click it
+  const ab = document.getElementById('analyseBtn');
+  ab.style.animation = 'pulse-btn 1.5s ease-in-out 3';
+  ab.style.boxShadow = '0 0 16px rgba(79,142,247,0.7)';
+  setTimeout(()=>{ ab.style.animation=''; ab.style.boxShadow=''; }, 5000);
 }
 
 function renderFileChip(c){
