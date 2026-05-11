@@ -1,0 +1,9 @@
+{
+  "name": "dpr-deep-analyser",
+  "version": "1.0.0",
+  "description": "RMA Finance — DPR Deep Analyser",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18.0.0" },
+  "dependencies": { "express": "^4.18.2", "pdf-parse": "^1.1.1" }
+}

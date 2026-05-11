@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DPR Deep Analyser — RMA Finance</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --bg:#0f1117;--bg2:#161b27;--bg3:#1e2535;--bg4:#252d3f;
+  --border:#2d3650;--border2:#3a4560;
+  --text:#e8eaf0;--text2:#9aa3b8;--text3:#5e6a85;
+  --accent:#4f8ef7;--accent2:#3a6fd8;--accent3:#1a3a7a;
+  --green:#2ecc71;--green2:#1a7a45;--green3:#0d3d22;
+  --amber:#f39c12;--amber2:#7a4f09;
+  --red:#e74c3c;--red2:#7a1e17;
+  --purple:#9b59b6;--purple2:#5d2d75;
+  --radius:10px;--radius2:6px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+/* LAYOUT */
+.app{display:grid;grid-template-columns:300px 1fr;min-height:100vh}
+.sidebar{background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.main{display:flex;flex-direction:column;overflow:hidden;min-height:100vh}
+
+/* SIDEBAR */
+.sbar-logo{padding:20px;border-bottom:1px solid var(--border)}
+.logo-title{font-size:16px;font-weight:700;color:var(--text)}
+.logo-title span{color:var(--accent)}
+.logo-sub{font-size:10px;color:var(--text3);margin-top:3px}
+.sbar-body{flex:1;overflow-y:auto;padding:12px}
+.sbar-section{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin:12px 0 6px}
+
+/* PROVIDER SELECT */
+.provider-wrap{padding:12px;border-bottom:1px solid var(--border)}
+.provider-label{font-size:10px;color:var(--text3);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.provider-sel{width:100%;padding:8px 10px;font-size:12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius2);color:var(--text);cursor:pointer;outline:none}
+.provider-sel:focus{border-color:var(--accent)}
+.provider-badge{display:inline-flex;align-items:center;gap:4px;font-size:9px;padding:2px 7px;border-radius:10px;margin-top:5px;font-weight:600}
+
+/* CLIENT CARDS */
+.client-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:8px;cursor:pointer;transition:all .15s;position:relative}
+.client-card:hover{border-color:var(--border2);background:var(--bg4)}
+.client-card.active{border-color:var(--accent);background:var(--accent3)}
+.client-card.active .cc-name{color:var(--accent)}
+.cc-name{font-size:12px;font-weight:600;margin-bottom:3px;padding-right:20px}
+.cc-sub{font-size:10px;color:var(--text3)}
+.cc-status{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
+.cc-tag{font-size:9px;padding:2px 6px;border-radius:4px;font-weight:500}
+.cc-del{position:absolute;top:10px;right:10px;width:18px;height:18px;display:flex;align-items:center;justify-content:center;border-radius:4px;cursor:pointer;font-size:12px;color:var(--text3);transition:all .12s}
+.cc-del:hover{background:var(--red2);color:var(--red)}
+
+/* ADD CLIENT */
+.add-client-btn{width:100%;padding:10px;background:var(--accent3);border:1px dashed var(--accent2);border-radius:var(--radius);color:var(--accent);font-size:12px;cursor:pointer;transition:all .15s;font-family:inherit}
+.add-client-btn:hover{background:var(--accent2);color:white}
+
+/* TOOLBAR */
+.toolbar{padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--bg2);flex-wrap:wrap}
+.tb-title{font-size:15px;font-weight:700;flex:1;min-width:120px}
+.tb-title span{color:var(--accent)}
+.btn{padding:7px 14px;font-size:12px;border-radius:var(--radius2);border:1px solid var(--border2);background:var(--bg3);cursor:pointer;color:var(--text);transition:all .12s;display:inline-flex;align-items:center;gap:6px;font-family:inherit}
+.btn:hover{background:var(--bg4);border-color:var(--accent)}
+.btn-primary{background:var(--accent);color:white;border-color:var(--accent)}
+.btn-primary:hover{background:var(--accent2)}
+.btn-success{background:var(--green2);color:white;border-color:var(--green2)}
+.btn-success:hover{background:#156338}
+.btn-red{background:var(--red2);color:var(--red);border-color:var(--red2)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* CONTENT */
+.content-area{flex:1;overflow-y:auto;padding:24px}
+
+/* UPLOAD ZONE */
+.upload-zone{border:2px dashed var(--border2);border-radius:var(--radius);padding:40px;text-align:center;cursor:pointer;transition:all .15s;position:relative;background:var(--bg2)}
+.upload-zone:hover{border-color:var(--accent);background:var(--accent3)}
+.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.upload-icon{font-size:36px;color:var(--text3);margin-bottom:12px}
+.upload-text{font-size:14px;color:var(--text2)}
+
+/* FILE CHIP */
+.fchip{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);margin-top:10px}
+.fchip-name{font-size:12px;flex:1;color:var(--text)}
+.fchip-rm{cursor:pointer;color:var(--text3);font-size:16px;padding:2px 5px;border-radius:4px}
+.fchip-rm:hover{color:var(--red);background:var(--red2)}
+
+/* PROGRESS */
+.progress-wrap{margin-top:20px}
+.progress-step{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg3);border-radius:var(--radius2);margin-bottom:6px;font-size:12px;border:1px solid var(--border)}
+.progress-step.active{border-color:var(--accent);background:var(--accent3)}
+.progress-step.done{border-color:var(--green2);background:var(--green3)}
+.progress-step.error{border-color:var(--red2);background:var(--red2)}
+.step-icon{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+.step-spin{animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* REPORT SECTIONS */
+.report-container{display:grid;gap:16px}
+.report-section{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.rs-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;cursor:pointer}
+.rs-title{font-size:13px;font-weight:700;flex:1}
+.rs-badge{font-size:9px;padding:2px 8px;border-radius:10px;font-weight:600}
+.rs-body{padding:18px}
+.rs-loading{padding:20px;text-align:center;color:var(--text3);font-size:12px}
+
+/* DATA DISPLAY */
+.data-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.data-item{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);padding:12px}
+.di-label{font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.di-value{font-size:13px;font-weight:500;color:var(--text)}
+.di-value.highlight{color:var(--accent)}
+.di-value.green{color:var(--green)}
+.di-value.amber{color:var(--amber)}
+
+.table-wrap{overflow-x:auto}
+table.report-tbl{width:100%;border-collapse:collapse;font-size:12px}
+table.report-tbl th{background:var(--bg4);color:var(--text2);padding:8px 12px;text-align:left;font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border)}
+table.report-tbl td{padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:top}
+table.report-tbl tr:hover td{background:var(--bg3)}
+table.report-tbl td.num{text-align:right;font-variant-numeric:tabular-nums;color:var(--accent)}
+table.report-tbl td.total{font-weight:700;color:var(--green)}
+
+.kpi-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.kpi-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;flex:1;min-width:140px;text-align:center}
+.kpi-val{font-size:22px;font-weight:700;color:var(--accent);margin-bottom:3px}
+.kpi-val.green{color:var(--green)}
+.kpi-val.amber{color:var(--amber)}
+.kpi-lbl{font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+
+.section-divider{height:1px;background:var(--border);margin:16px 0}
+.text-block{font-size:12px;color:var(--text2);line-height:1.7;padding:10px 14px;background:var(--bg3);border-radius:var(--radius2);border:1px solid var(--border)}
+
+/* MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:24px;width:480px;max-height:85vh;overflow-y:auto;box-shadow:0 25px 80px rgba(0,0,0,.5)}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between}
+.mclose{cursor:pointer;font-size:20px;color:var(--text3)}
+.mclose:hover{color:var(--red)}
+.fi{width:100%;padding:9px 12px;font-size:12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius2);color:var(--text);outline:none;font-family:inherit}
+.fi:focus{border-color:var(--accent)}
+.fr{margin-bottom:12px}
+.fl{font-size:11px;color:var(--text2);margin-bottom:5px;font-weight:500}
+
+/* STATUS BAR */
+.statusbar{padding:8px 24px;border-top:1px solid var(--border);display:flex;align-items:center;gap:12px;font-size:11px;background:var(--bg2)}
+.pbar{flex:1;height:3px;background:var(--border);border-radius:2px}
+.pfill{height:100%;background:var(--accent);border-radius:2px;transition:width .4s}
+
+.hidden{display:none!important}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* empty state */
+.empty-state{text-align:center;padding:60px 20px;color:var(--text3)}
+.empty-icon{font-size:48px;margin-bottom:16px;opacity:.4}
+.empty-title{font-size:16px;font-weight:600;color:var(--text2);margin-bottom:8px}
+.empty-sub{font-size:13px}
+
+/* PDF export btn */
+.export-bar{padding:14px 24px;border-top:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;gap:10px}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sbar-logo">
+      <div class="logo-title">DPR <span>Deep Analyser</span></div>
+      <div class="logo-sub">RMA Finance Private Limited &bull; AI-Powered</div>
+    </div>
+
+    <div class="provider-wrap">
+      <div class="provider-label">AI Provider</div>
+      <select class="provider-sel" id="providerSel" onchange="onProviderChange()">
+        <option value="">Loading…</option>
+      </select>
+      <div id="providerBadge" class="provider-badge hidden"></div>
+    </div>
+
+    <div class="sbar-body">
+      <div class="sbar-section">Clients</div>
+      <div id="clientList"></div>
+      <button class="add-client-btn" onclick="openAddClient()">
+        <i class="ti ti-plus"></i> Add New Client
+      </button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="toolbar">
+      <div class="tb-title" id="tbTitle">Select or add a client</div>
+      <div id="tbActions" class="hidden" style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" onclick="switchTab('upload')" id="tabUpload">
+          <i class="ti ti-upload"></i> Upload DPR
+        </button>
+        <button class="btn" onclick="switchTab('report')" id="tabReport">
+          <i class="ti ti-file-analytics"></i> Report
+        </button>
+        <button class="btn btn-primary" onclick="startAnalysis()" id="analyseBtn">
+          <i class="ti ti-sparkles"></i> Analyse DPR
+        </button>
+        <button class="btn btn-success" onclick="exportPDF()" id="exportBtn" style="display:none">
+          <i class="ti ti-file-text"></i> Export PDF
+        </button>
+      </div>
+    </div>
+
+    <div class="content-area" id="contentArea">
+      <!-- EMPTY STATE -->
+      <div id="viewEmpty">
+        <div class="empty-state">
+          <div class="empty-icon"><i class="ti ti-file-analytics"></i></div>
+          <div class="empty-title">DPR Deep Analyser</div>
+          <div class="empty-sub">Add a client, upload their DPR PDF, and let AI generate a complete professional analysis report.</div>
+          <div style="margin-top:20px">
+            <button class="btn btn-primary" onclick="openAddClient()"><i class="ti ti-plus"></i> Add First Client</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- UPLOAD VIEW -->
+      <div id="viewUpload" class="hidden">
+        <div class="upload-zone" id="dropZone">
+          <input type="file" accept=".pdf" onchange="handleFile(this.files[0])" id="fileInput">
+          <div class="upload-icon"><i class="ti ti-cloud-upload"></i></div>
+          <div class="upload-text">
+            <strong style="color:var(--text)">Click to upload DPR PDF</strong><br>
+            <span style="font-size:12px;color:var(--text3)">Detailed Project Report — text or scanned PDF</span>
+          </div>
+        </div>
+        <div id="fileChip" class="hidden"></div>
+        <div id="progressWrap" class="hidden progress-wrap"></div>
+      </div>
+
+      <!-- REPORT VIEW -->
+      <div id="viewReport" class="hidden">
+        <div id="reportContainer" class="report-container"></div>
+      </div>
+    </div>
+
+    <div class="statusbar">
+      <div style="color:var(--text3)" id="stText">Ready</div>
+      <div class="pbar"><div class="pfill" id="pFill" style="width:0%"></div></div>
+      <div style="color:var(--text2);font-weight:500" id="stPct"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Client Modal -->
+<div class="modal-bg" id="modalAdd">
+  <div class="modal">
+    <div class="modal-title">Add New Client <span class="mclose" onclick="closeModal('modalAdd')">&#x2715;</span></div>
+    <div class="fr"><div class="fl">Client / Company Name</div><input class="fi" id="newName" placeholder="e.g. Hindustan Dhaatu Limited"></div>
+    <div class="fr"><div class="fl">Project Type</div>
+      <select class="fi" id="newType">
+        <option>Steel / Iron</option><option>Cold Storage</option><option>Power Plant</option>
+        <option>Chemical / Pharma</option><option>Food Processing</option><option>Textile</option>
+        <option>Infrastructure</option><option>Manufacturing</option><option>Other</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="addClient()">Add Client</button>
+      <button class="btn" onclick="closeModal('modalAdd')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ─────────────────────────────────────────────────────────────────────
+const PROVIDER_INFO = {
+  groq:      { name:'Groq (LLaMA 3.3)',   color:'#F55036', free:'Free tier' },
+  gemini:    { name:'Gemini 1.5 Flash',   color:'#1A73E8', free:'Free tier' },
+  anthropic: { name:'Claude (Anthropic)', color:'#185FA5', free:'$5 credit' },
+  openai:    { name:'GPT-4o Mini',        color:'#10A37F', free:'$5 credit' },
+  mistral:   { name:'Mistral Small',      color:'#FF7000', free:'Free tier' },
+};
+
+const SECTIONS = [
+  { id:'overview',   title:'Project Overview',          icon:'ti-building',        color:'#4f8ef7' },
+  { id:'capacity',   title:'Capacity & Products',       icon:'ti-chart-bar',       color:'#9b59b6' },
+  { id:'cop',        title:'Cost of Project & MOF',     icon:'ti-calculator',      color:'#2ecc71' },
+  { id:'financial',  title:'Financial Projections',     icon:'ti-trending-up',     color:'#f39c12' },
+  { id:'management', title:'Management Profile',        icon:'ti-users',           color:'#e74c3c' },
+  { id:'market',     title:'Market & Products',         icon:'ti-world',           color:'#1abc9c' },
+  { id:'security',   title:'Security & Collateral',     icon:'ti-shield-lock',     color:'#8e44ad' },
+];
+
+let clients = JSON.parse(localStorage.getItem('dpr_clients')||'[]');
+let activeId = null;
+let currentProvider = '';
+let curTab = 'upload';
+
+function gc(id){ return clients.find(c=>c.id===id); }
+function save(){ localStorage.setItem('dpr_clients', JSON.stringify(clients.map(c=>({...c, fileObj:undefined})))); }
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+(async function init(){
+  await loadProviders();
+  renderClients();
+  if(clients.length){ selClient(clients[0].id); }
+})();
+
+async function loadProviders(){
+  try{
+    const r = await fetch('/api/providers');
+    const d = await r.json();
+    const av = d.providers||[];
+    const sel = document.getElementById('providerSel');
+    if(!av.length){
+      sel.innerHTML = '<option value="">No providers configured</option>';
+      return;
+    }
+    sel.innerHTML = av.map(p=>{
+      const m = PROVIDER_INFO[p]||{name:p,free:''};
+      return `<option value="${p}">${m.name} — ${m.free}</option>`;
+    }).join('');
+    currentProvider = av[0];
+    sel.value = currentProvider;
+    updateProviderBadge();
+  } catch(e){ console.error('Provider load failed:', e.message); }
+}
+
+function onProviderChange(){
+  currentProvider = document.getElementById('providerSel').value;
+  updateProviderBadge();
+}
+
+function updateProviderBadge(){
+  const b = document.getElementById('providerBadge');
+  const m = PROVIDER_INFO[currentProvider];
+  if(!m||!b){ b&&b.classList.add('hidden'); return; }
+  b.classList.remove('hidden');
+  b.style.background = m.color+'22';
+  b.style.color = m.color;
+  b.style.borderColor = m.color+'44';
+  b.innerHTML = `<i class="ti ti-check" style="font-size:10px"></i> ${m.name}`;
+}
+
+// ── CLIENTS ───────────────────────────────────────────────────────────────────
+function renderClients(){
+  const list = document.getElementById('clientList');
+  if(!clients.length){ list.innerHTML='<div style="font-size:11px;color:var(--text3);padding:8px 0">No clients yet</div>'; return; }
+  list.innerHTML = clients.map(c=>`
+    <div class="client-card ${c.id===activeId?'active':''}" onclick="selClient('${c.id}')">
+      <div class="cc-del" onclick="event.stopPropagation();delClient('${c.id}')">&#x2715;</div>
+      <div class="cc-name">${c.name}</div>
+      <div class="cc-sub">${c.type}</div>
+      <div class="cc-status">
+        ${c.hasFile ? '<span class="cc-tag" style="background:#1a3a7a;color:#4f8ef7">PDF Ready</span>' : '<span class="cc-tag" style="background:#3d2a0a;color:#f39c12">No PDF</span>'}
+        ${c.analysed ? '<span class="cc-tag" style="background:var(--green3);color:var(--green)">Analysed</span>' : ''}
+      </div>
+    </div>`).join('');
+}
+
+function selClient(id){
+  activeId = id;
+  const c = gc(id); if(!c) return;
+  document.getElementById('tbTitle').innerHTML = `<span>${c.name}</span>`;
+  document.getElementById('tbActions').style.display = 'flex';
+  document.getElementById('viewEmpty').classList.add('hidden');
+  renderClients();
+  if(c.analysed && c.reportData){ switchTab('report'); renderReport(c.reportData); }
+  else { switchTab('upload'); renderFileChip(c); }
+}
+
+function openAddClient(){ document.getElementById('modalAdd').classList.add('open'); setTimeout(()=>document.getElementById('newName').focus(),80); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+
+function addClient(){
+  const name = document.getElementById('newName').value.trim();
+  const type = document.getElementById('newType').value;
+  if(!name){ alert('Enter client name'); return; }
+  const id = 'c_'+Date.now();
+  clients.push({ id, name, type, hasFile:false, analysed:false, reportData:null });
+  save(); closeModal('modalAdd');
+  document.getElementById('newName').value='';
+  renderClients(); selClient(id);
+}
+
+function delClient(id){
+  const c = gc(id);
+  if(!confirm(`Delete "${c?.name}"?\n\nThis cannot be undone.`)) return;
+  clients = clients.filter(x=>x.id!==id);
+  save();
+  if(activeId===id){
+    activeId = clients.length ? clients[0].id : null;
+    if(activeId) selClient(activeId);
+    else { document.getElementById('tbActions').style.display='none'; document.getElementById('viewEmpty').classList.remove('hidden'); document.getElementById('viewUpload').classList.add('hidden'); document.getElementById('viewReport').classList.add('hidden'); }
+  }
+  renderClients();
+}
+
+// ── TABS ──────────────────────────────────────────────────────────────────────
+function switchTab(tab){
+  curTab = tab;
+  document.getElementById('viewUpload').classList.toggle('hidden', tab!=='upload');
+  document.getElementById('viewReport').classList.toggle('hidden', tab!=='report');
+  document.getElementById('tabUpload').classList.toggle('btn-primary', tab==='upload');
+  document.getElementById('tabReport').classList.toggle('btn-primary', tab==='report');
+}
+
+// ── FILE HANDLING ─────────────────────────────────────────────────────────────
+function handleFile(file){
+  if(!file||!activeId) return;
+  const c = gc(activeId);
+  c.fileObj = file;
+  c.fileName = file.name;
+  c.fileSize = (file.size/1024).toFixed(0)+'KB';
+  c.hasFile = true;
+  c.analysed = false;
+  c.reportData = null;
+  save(); renderClients(); renderFileChip(c);
+  setStatus('PDF loaded — click "Analyse DPR" to start', 0);
+}
+
+function renderFileChip(c){
+  const el = document.getElementById('fileChip');
+  if(!c||!c.hasFile){ el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  const hasBlob = c.fileObj instanceof Blob;
+  el.innerHTML = `<div class="fchip">
+    <i class="ti ti-file-text" style="font-size:16px;color:var(--accent)"></i>
+    <div style="flex:1">
+      <div class="fchip-name">${c.fileName||'DPR File'}</div>
+      ${!hasBlob?'<div style="font-size:10px;color:var(--amber)">⚠ Session reset — re-upload file</div>':'<div style="font-size:10px;color:var(--text3)">${c.fileSize||""} &bull; Ready</div>'}
+    </div>
+    <div class="fchip-rm" onclick="removeFile()">&#x2715;</div>
+  </div>`;
+  el.innerHTML = el.innerHTML.replace('${c.fileSize||""}', c.fileSize||'').replace('${c.fileName||\'DPR File\'}', c.fileName||'DPR File');
+}
+
+function removeFile(){
+  const c = gc(activeId); if(!c) return;
+  c.fileObj=null; c.hasFile=false; c.analysed=false; c.reportData=null;
+  save(); renderClients(); renderFileChip(c);
+  document.getElementById('fileInput').value='';
+}
+
+// ── ANALYSIS ─────────────────────────────────────────────────────────────────
+async function startAnalysis(){
+  const c = gc(activeId);
+  if(!c){ alert('Select a client'); return; }
+  if(!c.fileObj || !(c.fileObj instanceof Blob)){
+    alert('Please re-upload the PDF (session may have reset).'); switchTab('upload'); return;
+  }
+  if(!currentProvider){ alert('Select an AI provider'); return; }
+
+  const btn = document.getElementById('analyseBtn');
+  btn.disabled = true;
+
+  // Step 1: Extract PDF text
+  setStatus('Extracting PDF text…', 5);
+  showSteps();
+
+  let pdfText='', pdfUnit='lakhs', pdfPages=0;
+  try {
+    stepState('extract','active','Reading PDF pages…');
+    const b64 = await fileToB64(c.fileObj);
+    const r = await fetch('/api/extract-text',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({pdfBase64:b64}) });
+    const d = await r.json();
+    if(d.error) throw new Error(d.error);
+    pdfText = d.text; pdfUnit = d.unit; pdfPages = d.pages;
+    stepState('extract','done',`Extracted ${pdfPages} pages (${(pdfText.length/1000).toFixed(1)}K chars)`);
+  } catch(e){
+    stepState('extract','error','PDF extraction failed: '+e.message);
+    btn.disabled=false; return;
+  }
+
+  // Step 2-8: Analyse each section
+  const reportData = {};
+  for(let i=0; i<SECTIONS.length; i++){
+    const sec = SECTIONS[i];
+    const pct = Math.round(10 + (i/SECTIONS.length)*85);
+    setStatus(`Analysing: ${sec.title}…`, pct);
+    stepState('analyse_'+sec.id, 'active', `AI analysing ${sec.title}…`);
+    try {
+      const r = await fetch('/api/analyse-section',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ provider:currentProvider, section:sec.id, pdfText, unit:pdfUnit })
+      });
+      const d = await r.json();
+      if(d.error) throw new Error(d.error);
+      reportData[sec.id] = d.data;
+      stepState('analyse_'+sec.id,'done', sec.title+' ✓');
+    } catch(e){
+      stepState('analyse_'+sec.id,'error', sec.title+' failed: '+e.message);
+      reportData[sec.id] = { _error: e.message };
+    }
+    await sleep(300); // small delay between calls
+  }
+
+  // Done
+  c.analysed = true;
+  c.reportData = reportData;
+  c.reportProvider = currentProvider;
+  save(); renderClients();
+  setStatus('Analysis complete!', 100);
+  stepState('done','done','Report generated successfully!');
+  btn.disabled = false;
+  document.getElementById('exportBtn').style.display='flex';
+
+  await sleep(800);
+  switchTab('report');
+  renderReport(reportData);
+}
+
+function showSteps(){
+  const pw = document.getElementById('progressWrap');
+  pw.classList.remove('hidden');
+  const steps = [
+    {id:'extract', label:'PDF Text Extraction'},
+    ...SECTIONS.map(s=>({id:'analyse_'+s.id, label:'Analyse: '+s.title})),
+    {id:'done', label:'Report Generation'}
+  ];
+  pw.innerHTML = steps.map(s=>`
+    <div class="progress-step" id="step_${s.id}">
+      <div class="step-icon" id="icon_${s.id}" style="background:var(--bg4);color:var(--text3)">○</div>
+      <div style="flex:1">
+        <div style="font-size:11px;font-weight:500">${s.label}</div>
+        <div style="font-size:10px;color:var(--text3)" id="msg_${s.id}">Waiting…</div>
+      </div>
+    </div>`).join('');
+}
+
+function stepState(id, state, msg){
+  const el = document.getElementById('step_'+id);
+  const ic = document.getElementById('icon_'+id);
+  const mg = document.getElementById('msg_'+id);
+  if(!el) return;
+  el.className='progress-step '+state;
+  if(state==='active'){ ic.innerHTML='<i class="ti ti-loader step-spin" style="font-size:12px"></i>'; ic.style.background='var(--accent3)'; ic.style.color='var(--accent)'; }
+  if(state==='done'){   ic.innerHTML='<i class="ti ti-check" style="font-size:12px"></i>'; ic.style.background='var(--green3)'; ic.style.color='var(--green)'; }
+  if(state==='error'){  ic.innerHTML='<i class="ti ti-x" style="font-size:12px"></i>'; ic.style.background='var(--red2)'; ic.style.color='var(--red)'; }
+  if(mg) mg.textContent = msg;
+}
+
+// ── REPORT RENDERER ────────────────────────────────────────────────────────────
+function renderReport(data){
+  const container = document.getElementById('reportContainer');
+  const c = gc(activeId);
+  container.innerHTML = '';
+
+  // Header card
+  const ov = data.overview||{};
+  const hdr = document.createElement('div');
+  hdr.style.cssText='background:linear-gradient(135deg,var(--accent3),var(--bg3));border:1px solid var(--accent2);border-radius:var(--radius);padding:24px;margin-bottom:4px';
+  hdr.innerHTML=`
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div>
+        <div style="font-size:11px;color:var(--accent);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Detailed Project Report — Analysis</div>
+        <div style="font-size:22px;font-weight:800;color:var(--text);margin-bottom:4px">${ov.companyName||c?.name||'—'}</div>
+        <div style="font-size:13px;color:var(--text2)">${ov.constitution||''} ${ov.incorporationDate?'&bull; Incorporated: '+ov.incorporationDate:''}</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:4px">${ov.activity||''}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+        ${ov.dscr?`<div class="kpi-card" style="padding:10px 16px;min-width:auto"><div class="kpi-val green" style="font-size:18px">${ov.dscr}</div><div class="kpi-lbl">DSCR</div></div>`:''}
+        ${ov.irr?`<div class="kpi-card" style="padding:10px 16px;min-width:auto"><div class="kpi-val amber" style="font-size:18px">${ov.irr}</div><div class="kpi-lbl">IRR</div></div>`:''}
+      </div>
+    </div>`;
+  container.appendChild(hdr);
+
+  SECTIONS.forEach(sec=>{
+    const sd = data[sec.id];
+    if(!sd) return;
+    const div = document.createElement('div');
+    div.className='report-section';
+    div.innerHTML=`
+      <div class="rs-header" onclick="toggleSection('${sec.id}')">
+        <i class="ti ${sec.icon}" style="font-size:16px;color:${sec.color}"></i>
+        <div class="rs-title">${sec.title}</div>
+        <span class="rs-badge" style="background:${sec.color}22;color:${sec.color}">${Object.keys(sd).filter(k=>!k.startsWith('_')&&sd[k]).length} fields</span>
+        <i class="ti ti-chevron-down" id="chev_${sec.id}" style="color:var(--text3)"></i>
+      </div>
+      <div class="rs-body" id="body_${sec.id}">${renderSectionBody(sec.id, sd)}</div>`;
+    container.appendChild(div);
+  });
+
+  // Footer
+  const foot = document.createElement('div');
+  foot.style.cssText='text-align:center;padding:16px;font-size:11px;color:var(--text3)';
+  foot.innerHTML=`Report generated by RMA Finance Private Limited &bull; AI Provider: ${PROVIDER_INFO[gc(activeId)?.reportProvider]?.name||currentProvider} &bull; ${new Date().toLocaleDateString('en-IN')}`;
+  container.appendChild(foot);
+
+  document.getElementById('exportBtn').style.display='flex';
+}
+
+function toggleSection(id){
+  const body = document.getElementById('body_'+id);
+  const chev = document.getElementById('chev_'+id);
+  const hidden = body.style.display==='none';
+  body.style.display = hidden ? '' : 'none';
+  chev.className = hidden ? 'ti ti-chevron-up' : 'ti ti-chevron-down';
+  chev.style.color = 'var(--text3)';
+}
+
+function renderSectionBody(secId, data){
+  if(data._error) return `<div style="color:var(--red);font-size:12px;padding:8px">Analysis failed: ${data._error}</div>`;
+  if(data._raw)   return `<div class="text-block">${data._raw}</div>`;
+
+  switch(secId){
+    case 'overview':   return renderOverview(data);
+    case 'capacity':   return renderCapacity(data);
+    case 'cop':        return renderCOP(data);
+    case 'financial':  return renderFinancial(data);
+    case 'management': return renderManagement(data);
+    case 'market':     return renderMarket(data);
+    case 'security':   return renderSecurity(data);
+    default: return renderGeneric(data);
+  }
+}
+
+function renderOverview(d){
+  const fields=[
+    ['Company Name',d.companyName],['Constitution',d.constitution],
+    ['Date of Incorporation',d.incorporationDate],['Project Type',d.projectType],
+    ['Promoters',d.promoters],['Rate of Interest',d.rateOfInterest],
+    ['Working Days',d.workingDays?d.workingDays+' days/year':''],
+    ['Working Hours',d.workingHours?d.workingHours+' hrs/day':''],
+    ['Implementation Period',d.implementationPeriod],['COD',d.cod],
+  ].filter(([,v])=>v);
+  const addrs=[['Registered Office',d.registeredAddress],['Factory Address',d.factoryAddress]].filter(([,v])=>v);
+  return `
+    <div class="data-grid">
+      ${fields.map(([l,v])=>`<div class="data-item"><div class="di-label">${l}</div><div class="di-value">${v}</div></div>`).join('')}
+    </div>
+    ${addrs.length?`<div class="section-divider"></div><div class="data-grid">${addrs.map(([l,v])=>`<div class="data-item"><div class="di-label">${l}</div><div class="di-value">${v}</div></div>`).join('')}</div>`:''}
+    ${d.rawMaterials?`<div class="section-divider"></div><div class="data-item"><div class="di-label">Raw Materials</div><div class="di-value">${d.rawMaterials}</div></div>`:''}`;
+}
+
+function renderCapacity(d){
+  const prods = Array.isArray(d.products)?d.products:[];
+  return `
+    ${prods.length?`<div class="table-wrap"><table class="report-tbl"><thead><tr><th>Product</th><th>Capacity</th><th>Unit</th></tr></thead><tbody>
+      ${prods.map(p=>`<tr><td>${p.name||''}</td><td class="num">${p.capacity||''}</td><td>${p.unit||''}</td></tr>`).join('')}
+    </tbody></table></div><div class="section-divider"></div>`:''}
+    <div class="data-grid">
+      ${d.totalInstalledCapacity?`<div class="data-item"><div class="di-label">Total Installed Capacity</div><div class="di-value highlight">${d.totalInstalledCapacity}</div></div>`:''}
+      ${d.firstYearCapacity?`<div class="data-item"><div class="di-label">Year 1 Utilisation</div><div class="di-value">${d.firstYearCapacity}</div></div>`:''}
+      ${d.secondYearCapacity?`<div class="data-item"><div class="di-label">Year 2 Utilisation</div><div class="di-value">${d.secondYearCapacity}</div></div>`:''}
+      ${d.thirdYearCapacity?`<div class="data-item"><div class="di-label">Year 3 Utilisation</div><div class="di-value">${d.thirdYearCapacity}</div></div>`:''}
+    </div>`;
+}
+
+function renderCOP(d){
+  const cop = d.costOfProject||{};
+  const mof = d.meansOfFinance||{};
+  const copRows=[['Land & Site Development',cop.land],['Factory Building/Shed',cop.buildingShed],['Plant & Machinery',cop.plantMachinery],['Electrical Installation',cop.electricalInstallation],['Misc. Fixed Assets',cop.miscFixedAssets],['Deposits',cop.deposits],['Contingencies',cop.contingencies],['Pre-Operative Expenses',cop.preOperativeExp],['Working Capital Margin',cop.workingCapitalMargin]].filter(([,v])=>v&&v!=='0.00');
+  const mofRows=[["Promoter's Contribution",mof.promoterContribution],['Unsecured Loan (Quasi Equity)',mof.unsecuredLoan],['Bank Term Loan',mof.bankTermLoan],['WC Fund Based',mof.workingCapitalFundBased],['WC Non-Fund Based',mof.workingCapitalNonFund]].filter(([,v])=>v&&v!=='0.00');
+  return `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;flex-wrap:wrap">
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Cost of Project (Rs. Cr.)</div>
+        <table class="report-tbl"><tbody>
+          ${copRows.map(([l,v])=>`<tr><td>${l}</td><td class="num">${v}</td></tr>`).join('')}
+          ${cop.total?`<tr><td style="font-weight:700">TOTAL COP</td><td class="num total">${cop.total}</td></tr>`:''}
+        </tbody></table>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Means of Finance (Rs. Cr.)</div>
+        <table class="report-tbl"><tbody>
+          ${mofRows.map(([l,v])=>`<tr><td>${l}</td><td class="num">${v}</td></tr>`).join('')}
+          ${mof.total?`<tr><td style="font-weight:700">TOTAL MOF</td><td class="num total">${mof.total}</td></tr>`:''}
+        </tbody></table>
+      </div>
+    </div>
+    ${(d.debtEquityRatio||d.promoterContributionPct)?`<div class="section-divider"></div><div class="data-grid">
+      ${d.debtEquityRatio?`<div class="data-item"><div class="di-label">Debt:Equity Ratio</div><div class="di-value highlight">${d.debtEquityRatio}</div></div>`:''}
+      ${d.promoterContributionPct?`<div class="data-item"><div class="di-label">Promoter Contribution</div><div class="di-value green">${d.promoterContributionPct}</div></div>`:''}
+    </div>`:''}`;
+}
+
+function renderFinancial(d){
+  const yrs = Array.isArray(d.years)?d.years:[];
+  return `
+    ${yrs.length?`
+    <div class="kpi-row">
+      ${d.overallDscr?`<div class="kpi-card"><div class="kpi-val green">${d.overallDscr}</div><div class="kpi-lbl">Avg. DSCR</div></div>`:''}
+      ${d.irr?`<div class="kpi-card"><div class="kpi-val amber">${d.irr}</div><div class="kpi-lbl">IRR</div></div>`:''}
+      ${d.bep?`<div class="kpi-card"><div class="kpi-val">${d.bep}</div><div class="kpi-lbl">BEP</div></div>`:''}
+    </div>
+    <div class="table-wrap"><table class="report-tbl">
+      <thead><tr><th>Particulars</th>${yrs.map(y=>`<th style="text-align:right">${y}</th>`).join('')}</tr></thead>
+      <tbody>
+        ${[['Net Sales (Rs. Cr.)',d.turnover],['Gross Profit (Rs. Cr.)',d.grossProfit],['Gross Profit %',d.grossProfitPct],['Profit Before Tax',d.profitBeforeTax],['Profit After Tax',d.profitAfterTax],['DSCR',d.dscr]].filter(([,v])=>Array.isArray(v)&&v.length).map(([l,v])=>
+          `<tr><td>${l}</td>${v.map(x=>`<td class="num">${x||'—'}</td>`).join('')}</tr>`).join('')}
+      </tbody>
+    </table></div>`:''}
+    <div class="section-divider"></div>
+    <div class="data-grid">
+      ${d.repaymentTenure?`<div class="data-item"><div class="di-label">Repayment Tenure</div><div class="di-value">${d.repaymentTenure}</div></div>`:''}
+      ${d.moratorium?`<div class="data-item"><div class="di-label">Moratorium</div><div class="di-value">${d.moratorium}</div></div>`:''}
+      ${d.repaymentStart?`<div class="data-item"><div class="di-label">Repayment Start</div><div class="di-value">${d.repaymentStart}</div></div>`:''}
+      ${d.repaymentEnd?`<div class="data-item"><div class="di-label">Repayment End</div><div class="di-value">${d.repaymentEnd}</div></div>`:''}
+    </div>`;
+}
+
+function renderManagement(d){
+  const dirs = Array.isArray(d.directors)?d.directors:[];
+  return `
+    ${dirs.length?`<div class="table-wrap"><table class="report-tbl"><thead><tr><th>Name</th><th>Designation</th><th>Experience / Background</th></tr></thead><tbody>
+      ${dirs.map(dir=>`<tr><td style="font-weight:600">${dir.name||''}</td><td>${dir.designation||''}</td><td>${dir.experience||dir.background||''}</td></tr>`).join('')}
+    </tbody></table></div><div class="section-divider"></div>`:''}
+    <div class="data-grid">
+      ${d.keyStrengths?`<div class="data-item" style="grid-column:1/-1"><div class="di-label">Key Strengths</div><div class="di-value" style="font-size:12px;line-height:1.6">${d.keyStrengths}</div></div>`:''}
+      ${d.groupConcerns?`<div class="data-item"><div class="di-label">Group / Associate Concerns</div><div class="di-value">${d.groupConcerns}</div></div>`:''}
+      ${d.existingBanking?`<div class="data-item"><div class="di-label">Existing Banking</div><div class="di-value">${d.existingBanking}</div></div>`:''}
+    </div>`;
+}
+
+function renderMarket(d){
+  return `<div class="data-grid">
+    ${[['Target Markets',d.targetMarkets],['Raw Material Sources',d.rawMaterialSources],['Sales Strategy',d.salesStrategy],['Export Potential',d.exportPotential],['Competitors',d.competitors]].filter(([,v])=>v).map(([l,v])=>`<div class="data-item"><div class="di-label">${l}</div><div class="di-value">${v}</div></div>`).join('')}
+    ${d.marketOutlook?`<div class="data-item" style="grid-column:1/-1"><div class="di-label">Market Outlook</div><div class="text-block" style="margin-top:4px">${d.marketOutlook}</div></div>`:''}
+  </div>`;
+}
+
+function renderSecurity(d){
+  return `<div class="data-grid">
+    ${[['Primary Security',d.primarySecurity],['Collateral Security',d.collateralSecurity],['Personal Guarantee',d.personalGuarantee],['Collateral Coverage',d.collateralCoverageEstimate],['Insurance',d.insuranceDetails]].filter(([,v])=>v).map(([l,v])=>`<div class="data-item"><div class="di-label">${l}</div><div class="di-value">${v}</div></div>`).join('')}
+  </div>`;
+}
+
+function renderGeneric(d){
+  return `<div class="data-grid">
+    ${Object.entries(d).filter(([k,v])=>!k.startsWith('_')&&v).map(([k,v])=>`<div class="data-item"><div class="di-label">${k.replace(/([A-Z])/g,' $1').trim()}</div><div class="di-value">${Array.isArray(v)?v.join(', '):v}</div></div>`).join('')}
+  </div>`;
+}
+
+// ── PDF EXPORT ────────────────────────────────────────────────────────────────
+async function exportPDF(){
+  const c = gc(activeId);
+  if(!c||!c.reportData){ alert('No report to export'); return; }
+  const btn = document.getElementById('exportBtn');
+  btn.disabled=true; btn.innerHTML='<i class="ti ti-loader"></i> Generating…';
+
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const W=210,H=297,ML=14,MR=196,TW=MR-ML;
+  let y=14;
+  const BC=[24,95,165];
+
+  const chk = ()=>{ if(y>H-20){doc.addPage();y=14;} };
+  const hdr = (title,sub)=>{
+    chk();
+    doc.setFillColor(...BC);doc.rect(ML,y,TW,8,'F');
+    doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(9);
+    doc.text(title,ML+3,y+5.5);
+    if(sub){doc.setFontSize(7);doc.text(sub,MR-2,y+5.5,{align:'right'});}
+    y+=10;
+  };
+  const row=(lbl,val,isLast)=>{
+    chk();
+    doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(...BC);
+    doc.text(lbl+' :',ML+2,y+3.5);
+    doc.setFont('helvetica','normal');doc.setTextColor(30,30,30);
+    const lines=doc.splitTextToSize(String(val||'N/A'),TW-60);
+    doc.text(lines,ML+58,y+3.5);
+    const rh=Math.max(6,lines.length*4.5);
+    if(!isLast){doc.setDrawColor(220,220,220);doc.setLineWidth(0.2);doc.line(ML,y+rh,MR,y+rh);}
+    y+=rh;
+  };
+  const tblHdr=(hdrs,ws)=>{
+    chk();
+    doc.setFillColor(...BC);doc.rect(ML,y,TW,5.5,'F');
+    doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(7);
+    let cx=ML;hdrs.forEach((h,i)=>{doc.text(h,cx+2,y+3.8);cx+=ws[i];});y+=5.5;
+  };
+  const tblRow=(cells,ws,ri)=>{
+    chk();
+    doc.setFillColor(...(ri%2===0?[248,252,255]:[255,255,255]));doc.rect(ML,y,TW,5,'F');
+    doc.setTextColor(30,30,30);doc.setFont('helvetica','normal');doc.setFontSize(7);
+    let cx=ML;cells.forEach((v,i)=>{doc.text(String(v||'—'),cx+2,y+3.3);cx+=ws[i];});
+    doc.setDrawColor(220,220,220);doc.setLineWidth(0.2);doc.line(ML,y+5,MR,y+5);y+=5;
+  };
+
+  // Header
+  doc.setFillColor(...BC);doc.rect(0,0,210,22,'F');
+  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(14);
+  doc.text('DETAILED PROJECT REPORT — ANALYSIS',105,10,{align:'center'});
+  doc.setFontSize(8);doc.setFont('helvetica','normal');
+  const rd=c.reportData; const ov=rd.overview||{};
+  doc.text((ov.companyName||c.name).toUpperCase(),105,16,{align:'center'});
+  y=28;
+
+  // Overview
+  hdr('PROJECT OVERVIEW');
+  [['Company Name',ov.companyName||c.name],['Constitution',ov.constitution],['Date of Incorporation',ov.incorporationDate],['Project Type',ov.projectType],['Promoters',ov.promoters],['Activity',ov.activity],['Registered Office',ov.registeredAddress],['Factory Address',ov.factoryAddress],['Rate of Interest',ov.rateOfInterest],['Implementation Period',ov.implementationPeriod],['COD',ov.cod]].filter(([,v])=>v).forEach(([l,v],i,a)=>row(l,v,i===a.length-1));
+  y+=4;
+
+  // Capacity
+  const cap=rd.capacity||{};
+  hdr('CAPACITY & PRODUCTS');
+  const prods=Array.isArray(cap.products)?cap.products:[];
+  if(prods.length){
+    tblHdr(['Product','Capacity','Unit'],[80,60,TW-140]);
+    prods.forEach((p,i)=>tblRow([p.name,p.capacity,p.unit],[80,60,TW-140],i));
+    y+=4;
+  }
+  [['Total Installed Capacity',cap.totalInstalledCapacity],['Y1 Utilisation',cap.firstYearCapacity],['Y2 Utilisation',cap.secondYearCapacity],['Y3 Utilisation',cap.thirdYearCapacity]].filter(([,v])=>v).forEach(([l,v],i,a)=>row(l,v,i===a.length-1));
+  y+=4;
+
+  // COP
+  const cop_d=rd.cop||{};const cop=cop_d.costOfProject||{};const mof=cop_d.meansOfFinance||{};
+  hdr('COST OF PROJECT & MEANS OF FINANCE','(Rs. in Crores)');
+  const HW=TW/2-1;
+  doc.setFillColor(...BC);doc.rect(ML,y,HW,5.5,'F');doc.rect(ML+HW+2,y,HW,5.5,'F');
+  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(7.5);
+  doc.text('COST OF PROJECT',ML+3,y+3.8);doc.text('MEANS OF FINANCE',ML+HW+5,y+3.8);y+=5.5;
+  const cItems=[['Land & Site Dev.',cop.land],['Factory Building',cop.buildingShed],['Plant & Machinery',cop.plantMachinery],['Deposits',cop.deposits],['Contingencies',cop.contingencies],['Pre-Op. Expenses',cop.preOperativeExp],['WC Margin',cop.workingCapitalMargin]].filter(([,v])=>v&&v!=='0.00');
+  const mItems=[["Promoter's Contribution",mof.promoterContribution],['Unsecured Loan',mof.unsecuredLoan],['Bank Term Loan',mof.bankTermLoan],['WC Fund Based',mof.workingCapitalFundBased],['WC Non-Fund',mof.workingCapitalNonFund]].filter(([,v])=>v&&v!=='0.00');
+  for(let i=0;i<Math.max(cItems.length,mItems.length);i++){
+    chk();
+    const ci=cItems[i]||['',''],mi=mItems[i]||['',''];
+    const bg=i%2===0?[248,252,255]:[255,255,255];
+    doc.setFillColor(...bg);doc.rect(ML,y,HW,5,'F');doc.rect(ML+HW+2,y,HW,5,'F');
+    doc.setTextColor(30,30,30);doc.setFont('helvetica','normal');doc.setFontSize(7);
+    if(ci[0]){doc.text(ci[0],ML+2,y+3.3);if(ci[1])doc.text(ci[1],ML+HW-2,y+3.3,{align:'right'});}
+    if(mi[0]){doc.text(mi[0],ML+HW+4,y+3.3);if(mi[1])doc.text(mi[1],MR-1,y+3.3,{align:'right'});}
+    doc.setDrawColor(220,220,220);doc.setLineWidth(0.2);doc.line(ML,y+5,ML+HW,y+5);doc.line(ML+HW+2,y+5,MR,y+5);y+=5;
+  }
+  doc.setFillColor(...BC.map(x=>Math.min(255,x+130)));doc.rect(ML,y,HW,5.5,'F');doc.rect(ML+HW+2,y,HW,5.5,'F');
+  doc.setTextColor(...BC);doc.setFont('helvetica','bold');doc.setFontSize(7.5);
+  if(cop.total){doc.text('TOTAL COP',ML+2,y+3.8);doc.text(cop.total,ML+HW-2,y+3.8,{align:'right'});}
+  if(mof.total){doc.text('TOTAL MOF',ML+HW+4,y+3.8);doc.text(mof.total,MR-1,y+3.8,{align:'right'});}
+  y+=9;
+
+  // Financial
+  const fin=rd.financial||{};
+  if(y>H-50){doc.addPage();y=14;}
+  hdr('FINANCIAL PROJECTIONS','(Rs. in Crores)');
+  const yrs=Array.isArray(fin.years)?fin.years:[];
+  if(yrs.length){
+    const yw=TW/(yrs.length+1);
+    tblHdr(['Particulars',...yrs],[TW-yrs.length*yw,...yrs.map(()=>yw)]);
+    [['Net Sales (Cr.)',fin.turnover],['Gross Profit (Cr.)',fin.grossProfit],['GP %',fin.grossProfitPct],['PBT (Cr.)',fin.profitBeforeTax],['PAT (Cr.)',fin.profitAfterTax],['DSCR',fin.dscr]].filter(([,v])=>Array.isArray(v)&&v.length).forEach(([l,v],ri)=>tblRow([l,...v],[TW-yrs.length*yw,...yrs.map(()=>yw)],ri));
+    y+=4;
+  }
+  [['Overall DSCR',fin.overallDscr],['IRR',fin.irr],['BEP',fin.bep],['Repayment Tenure',fin.repaymentTenure],['Moratorium',fin.moratorium],['Repayment Start',fin.repaymentStart],['Repayment End',fin.repaymentEnd]].filter(([,v])=>v).forEach(([l,v],i,a)=>row(l,v,i===a.length-1));
+  y+=4;
+
+  // Management
+  const mgmt=rd.management||{};
+  if(y>H-40){doc.addPage();y=14;}
+  hdr('MANAGEMENT PROFILE');
+  const dirs=Array.isArray(mgmt.directors)?mgmt.directors:[];
+  if(dirs.length){
+    tblHdr(['Name','Designation','Background'],[50,40,TW-90]);
+    dirs.forEach((d2,i)=>tblRow([d2.name,d2.designation,d2.experience||d2.background],[50,40,TW-90],i));
+    y+=4;
+  }
+  [['Key Strengths',mgmt.keyStrengths],['Group Concerns',mgmt.groupConcerns],['Existing Banking',mgmt.existingBanking]].filter(([,v])=>v).forEach(([l,v],i,a)=>row(l,v,i===a.length-1));
+  y+=4;
+
+  // Security
+  const sec=rd.security||{};
+  if(y>H-30){doc.addPage();y=14;}
+  hdr('SECURITY & COLLATERAL');
+  [['Primary Security',sec.primarySecurity],['Collateral Security',sec.collateralSecurity],['Personal Guarantee',sec.personalGuarantee],['Collateral Coverage',sec.collateralCoverageEstimate]].filter(([,v])=>v).forEach(([l,v],i,a)=>row(l,v,i===a.length-1));
+
+  // Footer
+  const now=new Date();
+  doc.setDrawColor(180,180,180);doc.setLineWidth(0.3);doc.line(ML,H-10,MR,H-10);
+  doc.setFontSize(6.5);doc.setFont('helvetica','italic');doc.setTextColor(130,130,130);
+  doc.text('RMA Finance Private Limited | CA Rahul Mishra & Associates | Raipur, Chhattisgarh',ML,H-6);
+  doc.text('Date: '+now.getDate()+'/'+(now.getMonth()+1)+'/'+now.getFullYear(),MR,H-6,{align:'right'});
+
+  doc.save((ov.companyName||c.name).replace(/[^a-z0-9]/gi,'_')+'_DPR_Analysis.pdf');
+  btn.disabled=false;btn.innerHTML='<i class="ti ti-file-text"></i> Export PDF';
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function fileToB64(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=()=>rej(new Error('Read failed')); r.readAsDataURL(file); }); }
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+function setStatus(msg, pct){ document.getElementById('stText').textContent=msg; document.getElementById('pFill').style.width=pct+'%'; document.getElementById('stPct').textContent=pct?pct+'%':''; }
+</script>
+</body>
+</html>
