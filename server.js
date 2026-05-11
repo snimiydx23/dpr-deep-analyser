@@ -8,11 +8,12 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 const PROVIDERS = {
-  groq:      { keyEnv:'GROQ_API_KEY',      maxTok:6000, getUrl:()=>'https://api.groq.com/openai/v1/chat/completions',          getHdr:(k)=>({'Content-Type':'application/json','Authorization':`Bearer ${k}`}), build:({p,t})=>JSON.stringify({model:'llama-3.3-70b-versatile',max_tokens:t,temperature:0.15,messages:[{role:'user',content:p}]}),     parse:(d)=>{ if(d.error)throw new Error(d.error.message||JSON.stringify(d.error)); return d.choices?.[0]?.message?.content||''; } },
-  gemini:    { keyEnv:'GEMINI_API_KEY',     maxTok:6000, getUrl:(k)=>`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${k}`, getHdr:()=>({'Content-Type':'application/json'}), build:({p,t})=>JSON.stringify({contents:[{parts:[{text:p}]}],generationConfig:{maxOutputTokens:t,temperature:0.15}}), parse:(d)=>{ if(d.error)throw new Error(d.error.message||JSON.stringify(d.error)); return d.candidates?.[0]?.content?.parts?.[0]?.text||''; } },
-  anthropic: { keyEnv:'ANTHROPIC_API_KEY',  maxTok:4000, getUrl:()=>'https://api.anthropic.com/v1/messages',                   getHdr:(k)=>({'Content-Type':'application/json','x-api-key':k,'anthropic-version':'2023-06-01'}), build:({p,t})=>JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:t,messages:[{role:'user',content:p}]}), parse:(d)=>{ if(d.error)throw new Error(d.error.message||JSON.stringify(d.error)); return (d.content||[]).map(b=>b.text||'').join(''); } },
-  openai:    { keyEnv:'OPENAI_API_KEY',     maxTok:4000, getUrl:()=>'https://api.openai.com/v1/chat/completions',              getHdr:(k)=>({'Content-Type':'application/json','Authorization':`Bearer ${k}`}), build:({p,t})=>JSON.stringify({model:'gpt-4o-mini',max_tokens:t,temperature:0.15,messages:[{role:'user',content:p}]}),          parse:(d)=>{ if(d.error)throw new Error(d.error.message||JSON.stringify(d.error)); return d.choices?.[0]?.message?.content||''; } },
-  mistral:   { keyEnv:'MISTRAL_API_KEY',    maxTok:4000, getUrl:()=>'https://api.mistral.ai/v1/chat/completions',              getHdr:(k)=>({'Content-Type':'application/json','Authorization':`Bearer ${k}`}), build:({p,t})=>JSON.stringify({model:'mistral-small-latest',max_tokens:t,temperature:0.15,messages:[{role:'user',content:p}]}),      parse:(d)=>{ if(d.error)throw new Error(d.error.message||JSON.stringify(d.error)); return d.choices?.[0]?.message?.content||''; } },
+  // groq free tier: 12000 TPM hard limit. maxCtx=6000 chars keeps prompt+output well under limit.
+  groq:      { keyEnv:'GROQ_API_KEY',      maxTok:1500, maxCtx:5000,  getUrl:()=>'https://api.groq.com/openai/v1/chat/completions',          getHdr:(k)=>({'Content-Type':'application/json','Authorization':`Bearer ${k}`}), build:({p,t})=>JSON.stringify({model:'llama-3.3-70b-versatile',max_tokens:t,temperature:0.15,messages:[{role:'user',content:p}]}),     parse:(d)=>{ if(d.error)throw new Error(d.error.message||JSON.stringify(d.error)); return d.choices?.[0]?.message?.content||''; } },
+  gemini:    { keyEnv:'GEMINI_API_KEY',     maxTok:4000, maxCtx:18000, getUrl:(k)=>`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${k}`, getHdr:()=>({'Content-Type':'application/json'}), build:({p,t})=>JSON.stringify({contents:[{parts:[{text:p}]}],generationConfig:{maxOutputTokens:t,temperature:0.15}}), parse:(d)=>{ if(d.error)throw new Error(d.error.message||JSON.stringify(d.error)); return d.candidates?.[0]?.content?.parts?.[0]?.text||''; } },
+  anthropic: { keyEnv:'ANTHROPIC_API_KEY',  maxTok:4000, maxCtx:18000, getUrl:()=>'https://api.anthropic.com/v1/messages',                   getHdr:(k)=>({'Content-Type':'application/json','x-api-key':k,'anthropic-version':'2023-06-01'}), build:({p,t})=>JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:t,messages:[{role:'user',content:p}]}), parse:(d)=>{ if(d.error)throw new Error(d.error.message||JSON.stringify(d.error)); return (d.content||[]).map(b=>b.text||'').join(''); } },
+  openai:    { keyEnv:'OPENAI_API_KEY',     maxTok:4000, maxCtx:18000, getUrl:()=>'https://api.openai.com/v1/chat/completions',              getHdr:(k)=>({'Content-Type':'application/json','Authorization':`Bearer ${k}`}), build:({p,t})=>JSON.stringify({model:'gpt-4o-mini',max_tokens:t,temperature:0.15,messages:[{role:'user',content:p}]}),          parse:(d)=>{ if(d.error)throw new Error(d.error.message||JSON.stringify(d.error)); return d.choices?.[0]?.message?.content||''; } },
+  mistral:   { keyEnv:'MISTRAL_API_KEY',    maxTok:4000, maxCtx:18000, getUrl:()=>'https://api.mistral.ai/v1/chat/completions',              getHdr:(k)=>({'Content-Type':'application/json','Authorization':`Bearer ${k}`}), build:({p,t})=>JSON.stringify({model:'mistral-small-latest',max_tokens:t,temperature:0.15,messages:[{role:'user',content:p}]}),      parse:(d)=>{ if(d.error)throw new Error(d.error.message||JSON.stringify(d.error)); return d.choices?.[0]?.message?.content||''; } },
 };
 
 console.log('\n=== DPR Analyser — Provider Status ===');
@@ -46,12 +47,12 @@ function detectUnit(text) {
 }
 
 // SECTION-WISE PROMPTS
-function buildSectionPrompt(section, pdfText, unit) {
+function buildSectionPrompt(section, pdfText, unit, maxCtx) {
   const unitNote = unit==='lakhs'
     ? 'AMOUNTS ARE IN LAKHS — convert to Crores by dividing by 100.'
     : 'Amounts are in Crores.';
 
-  const text = pdfText.slice(0, 18000);
+  const text = pdfText.slice(0, maxCtx || 18000);
 
   const prompts = {
     overview: `Extract Project Overview from this DPR. ${unitNote}
@@ -198,7 +199,9 @@ app.post('/api/analyse-section', async (req,res)=>{
   const { provider, section, pdfText, unit } = req.body;
   if (!provider||!section||!pdfText) return res.status(400).json({ error:'provider, section, pdfText required' });
   try {
-    const prompt = buildSectionPrompt(section, pdfText, unit||'lakhs');
+    const cfg    = PROVIDERS[provider];
+    if (!cfg) return res.status(400).json({ error:`Unknown provider: ${provider}` });
+    const prompt = buildSectionPrompt(section, pdfText, unit||'lakhs', cfg.maxCtx);
     const raw    = await callProvider(provider, prompt);
     // Parse JSON from response
     const clean  = raw.replace(/```json|```/g,'').trim();
